@@ -1,11 +1,16 @@
 from watchlist_app.api.serializers import WatchlistSerializer,StreamPlatformSerializer,ReviewSerializer
 from watchlist_app.models import Watchlist,StreamPlatform,Review
-from rest_framework.response import Response # type: ignore
-from rest_framework.decorators import api_view # type: ignore
-from rest_framework import status # type: ignore
-from rest_framework.views import APIView # type: ignore
-from rest_framework import mixins # type: ignore
-from rest_framework import generics # type: ignore
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework import mixins
+from rest_framework import generics
+from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from watchlist_app.api.permissions import AdminOrReadOnly, ReviewUserOrReadOnly
+
 class ReviewList_AV(generics.ListAPIView):
    #queryset = Review.objects.all()
     serializer_class = ReviewSerializer
@@ -16,16 +21,28 @@ class ReviewList_AV(generics.ListAPIView):
 class ReviewDetail_AV(generics.RetrieveUpdateDestroyAPIView):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
+    permission_classes = [ReviewUserOrReadOnly]
+    
     
      
 class ReviewCreate_AV(generics.CreateAPIView):
     serializer_class = ReviewSerializer
+    def get_queryset(self):
+        return Review.objects.all()
     def perform_create(self,serializer):
         pk = self.kwargs['pk']
-        movie = Watchlist.objects.get(pk=pk)
-        serializer.save(watchlist=movie)
-
-
+        watchlist = Watchlist.objects.get(pk=pk)
+        review_user = self.request.user
+        review_queryset = Review.objects.filter(watchlist= watchlist, review_user = review_user)
+        if review_queryset.exists():
+            raise ValidationError("This watchlist have already been reviewed")
+        if watchlist.number_rating == 0:
+            watchlist.number_rating = serializer.validated_data['rating']
+        else:
+            watchlist.avg_rating = (watchlist.number_rating+serializer.validated_data['rating']) / 2
+        watchlist.number_rating = watchlist.number_rating + 1
+        watchlist.save()
+        serializer.save(watchlist=watchlist, review_user = review_user)
 '''class ReviewDetail_AV(mixins.RetrieveModelMixin,mixins.UpdateModelMixin,mixins.DestroyModelMixin,
                     generics.GenericAPIView):
     queryset = Review.objects.all()
@@ -78,7 +95,11 @@ class WatchlistDetail_AV(APIView):
         movie = Watchlist.objects.get(pk=pk)
         movie.delete
         return Response({'Deleted'}, status = status.HTTP_202_ACCEPTED)
-class StreamPlatform_AV(APIView):
+    
+class StreamPlatform_VS(viewsets.ModelViewSet):
+    queryset = StreamPlatform.objects.all()
+    serializer_class = StreamPlatformSerializer
+'''class StreamPlatform_AV(APIView):
     def get(self,request):
         stream = StreamPlatform.objects.all()
         serializer = StreamPlatformSerializer(stream, many=True)
@@ -110,7 +131,7 @@ class StreamPlatformDetail(APIView):
     def delete(self,request,pk):
         stream = StreamPlatform.objects.get(pk=pk)
         stream.delete
-        return Response({'Done'},status = status.HTTP_202_ACCEPTED)
+        return Response({'Done'},status = status.HTTP_202_ACCEPTED)'''
         
 
 '''@api_view(['GET','POST'])
