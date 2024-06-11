@@ -37,9 +37,9 @@ class ReviewCreate_AV(generics.CreateAPIView):
         if review_queryset.exists():
             raise ValidationError("This watchlist have already been reviewed")
         if watchlist.number_rating == 0:
-            watchlist.number_rating = serializer.validated_data['rating']
+            watchlist.avg_rating = serializer.validated_data['rating']
         else:
-            watchlist.avg_rating = (watchlist.number_rating+serializer.validated_data['rating']) / 2
+            watchlist.avg_rating = (watchlist.avg_rating+serializer.validated_data['rating']) / 2
         watchlist.number_rating = watchlist.number_rating + 1
         watchlist.save()
         serializer.save(watchlist=watchlist, review_user = review_user)
