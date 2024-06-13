@@ -9,28 +9,35 @@ from rest_framework import generics
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
-from watchlist_app.api.permissions import AdminOrReadOnly, ReviewUserOrReadOnly
+from watchlist_app.api.permissions import IsAdminOrReadOnly, ReviewUserOrReadOnly
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
+from user_app.api.pagination import WatchlistPagination
 
 class ReviewList_AV(generics.ListAPIView):
    #queryset = Review.objects.all()
     serializer_class = ReviewSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['review_user__username', 'valid']
     def get_queryset(self):
         pk = self.kwargs['pk']
         return Review.objects.filter(watchlist=pk)
     
 class ReviewDetail_AV(generics.RetrieveUpdateDestroyAPIView):
+    throttle_scope = 'review-detail'
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = [ReviewUserOrReadOnly]
     
     
-     
 class ReviewCreate_AV(generics.CreateAPIView):
+    throttle_scope = 'review-create'
     serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
     def get_queryset(self):
         return Review.objects.all()
     def perform_create(self,serializer):
-        pk = self.kwargs['pk']
+        pk = self.kwargs.get('pk')
         watchlist = Watchlist.objects.get(pk=pk)
         review_user = self.request.user
         review_queryset = Review.objects.filter(watchlist= watchlist, review_user = review_user)
@@ -63,7 +70,18 @@ class ReviewList_AV(mixins.ListModelMixin,mixins.CreateModelMixin,
         return self.list(request, *args, **kwargs)
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)'''
+class Watchlist_Test(generics.ListAPIView):
+    queryset = Watchlist.objects.all()
+    serializer_class = WatchlistSerializer  
+    pagination_class = WatchlistPagination 
+    #filter_backends = [filters.SearchFilter]
+    #search_fields = ['title','platform__name']
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['avg_rating']
+
+
 class Watchlist_AV(APIView):
+    permission_classes = [IsAdminOrReadOnly]
     def get(self, request):
         movielist = Watchlist.objects.all()
         serializer = WatchlistSerializer(movielist,many=True)
@@ -76,6 +94,7 @@ class Watchlist_AV(APIView):
         else:
             return Response(serializer.errors)
 class WatchlistDetail_AV(APIView):
+    permission_classes = [IsAdminOrReadOnly]
     def get(self,request,pk):
         movie = Watchlist.objects.get(pk=pk)
         try:
@@ -97,9 +116,12 @@ class WatchlistDetail_AV(APIView):
         return Response({'Deleted'}, status = status.HTTP_202_ACCEPTED)
     
 class StreamPlatform_VS(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrReadOnly]
     queryset = StreamPlatform.objects.all()
     serializer_class = StreamPlatformSerializer
-'''class StreamPlatform_AV(APIView):
+    
+class StreamPlatform_AV(APIView):
+    permission_classes = [IsAdminOrReadOnly]
     def get(self,request):
         stream = StreamPlatform.objects.all()
         serializer = StreamPlatformSerializer(stream, many=True)
@@ -111,7 +133,9 @@ class StreamPlatform_VS(viewsets.ModelViewSet):
             return Response(serializer.data)
         else:
             return Response({"Error saving it"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        
 class StreamPlatformDetail(APIView):
+    permission_classes = [IsAdminOrReadOnly]
     def get(self,request,pk):
         stream = StreamPlatform.objects.get(pk=pk)
         try:
@@ -131,7 +155,7 @@ class StreamPlatformDetail(APIView):
     def delete(self,request,pk):
         stream = StreamPlatform.objects.get(pk=pk)
         stream.delete
-        return Response({'Done'},status = status.HTTP_202_ACCEPTED)'''
+        return Response({'Done'},status = status.HTTP_202_ACCEPTED)
         
 
 '''@api_view(['GET','POST'])
