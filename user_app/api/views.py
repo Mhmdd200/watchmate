@@ -19,7 +19,7 @@ def registration_views(request):
             data['token'] = token
         else:
             data = serializer.errors
-        return Response(data)
+        return Response(data, status=status.HTTP_201_CREATED)
 @api_view(['POST',])
 def logout_views(request):
     if request.method == 'POST':
