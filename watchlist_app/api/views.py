@@ -92,7 +92,7 @@ class Watchlist_AV(APIView):
             serializer.save()
             return Response(serializer.data)
         else:
-            return Response(serializer.errors)
+            return Response(serializer.errors, status = status.HTTP_403_FORBIDDEN)
 class WatchlistDetail_AV(APIView):
     permission_classes = [IsAdminOrReadOnly]
     def get(self,request,pk):
@@ -101,7 +101,7 @@ class WatchlistDetail_AV(APIView):
             serializer = WatchlistSerializer(movie)
             return Response(serializer.data)
         except movie.DoesNotExist:
-            return Response({'Error movie not found'}, status = status.HTTP_404_NOT_FOUND)
+            return Response({'Error movie not found'}, status = status.HTTP_403_FORBIDDEN)
     def put(self,request,pk):
         movie = Watchlist.objects.get(pk=pk)
         serializer = WatchlistSerializer(movie, data = request.data)
@@ -109,7 +109,7 @@ class WatchlistDetail_AV(APIView):
             serializer.save()
             return Response(serializer.data)
         else:
-            return Response({'Error editing the movie'}, status = status.HTTP_405_METHOD_NOT_ALLOWED)
+            return Response({'Error editing the movie'}, status = status.HTTP_403_FORBIDDEN)
     def delete(self,request,pk):
         movie = Watchlist.objects.get(pk=pk)
         movie.delete
